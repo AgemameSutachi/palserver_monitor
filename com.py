@@ -36,10 +36,6 @@ class MyRotatingFileHandler(RotatingFileHandler):
         self.stream = self._open()
 
     def get_log_filename(self):
-        log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Log')
-        return os.path.join(log_dir, f"{datetime.now():%Y-%m-%d}.log")
-
-    def get_log_filename(self):
         log_dir = os.path.join(os.getcwd(), 'Log')  # PyInstaller用のパスを利用
         return os.path.join(log_dir, f"{datetime.now():%Y-%m-%d}.log")
 
@@ -47,6 +43,11 @@ class MyRotatingFileHandler(RotatingFileHandler):
 # ファイルハンドラの初期化
 file_handler = MyRotatingFileHandler(
     maxBytes=1000000, backupCount=10
+)
+file_handler.setLevel(DEBUG)
+file_handler.setFormatter(
+    # Formatter("%(asctime)s [%(levelname).4s] %(filename)s %(funcName)s %(lineno)d: %(message)s")
+    Formatter("%(asctime)s [%(levelname)s] %(filename)s %(funcName)s %(lineno)d: %(message)s")
 )
 
 # ルートロガーの設定
