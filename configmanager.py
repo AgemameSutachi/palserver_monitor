@@ -4,17 +4,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 default_config_dic={
-    "process_name_to_check": "PalServer.exe",
+    # "process_name_to_check": "PalServer.exe",
     "process_path_to_start": "C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer\\PalServer.exe",
-    "server_host":"127.0.0.1",
+    # "server_host":"127.0.0.1",
     "server_port":"25585",
     "rcon_password":"password",
-    "zip_dir":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer\\Pal\\Saved",
-    "repo_directory":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer",
-    "steamcmd_dir_path":"C:\\Users\\aaaaa\\steamcmd",
-    "steamcmd_exe_path":"C:\\Users\\aaaaa\\steamcmd\\steamcmd.exe",
+    # "zip_dir":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer\\Pal\\Saved",
+    # "repo_directory":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer",
+    # "steamcmd_dir_path":"C:\\Users\\aaaaa\\steamcmd",
+    # "steamcmd_exe_path":"C:\\Users\\aaaaa\\steamcmd\\steamcmd.exe",
     "backup_max_age_days":"10",
-    "joinstatuscsv_path":"joinStatus.csv"
+    # "joinstatuscsv_path":"joinStatus.csv"
 }
 
 class ConfigManager():
@@ -45,4 +45,4 @@ class ConfigManager():
             raise
     
     def get(self,key):
-        return self.config_dic.get(key)
+        return self.config_dic.get(key,"")

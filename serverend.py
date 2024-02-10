@@ -19,9 +19,19 @@ rcon_password = CL_Con.get("rcon_password")
 
 from palserver_monitor import worldsave_safe
 
+def isnum(num):
+    try:
+        tmp=int(num)
+        return 1
+    except:
+        return 0
+
 def main():
     try:
-        worldsave_safe(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start, True)
+        if len(sys.argv) > 2 and isnum(sys.argv[2]): # 確認：引数が3つ以上あるかどうか
+            worldsave_safe(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start, True, int(sys.argv[2]))
+        else:
+            worldsave_safe(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start, True)
         logger.info("サーバー終了完了！！")
         if len(sys.argv) > 1 and sys.argv[1] == '1':
             logger.debug("exit 0")

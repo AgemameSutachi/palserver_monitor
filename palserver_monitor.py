@@ -31,21 +31,26 @@ import re
 from pandas import read_csv
 logger=logging.getLogger(__name__)
 
-
 CL_Con=ConfigManager()
-process_name_to_check = CL_Con.get("process_name_to_check")
+
+# C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer\PalServer.exe
 process_path_to_start = CL_Con.get("process_path_to_start")
-
-server_host = CL_Con.get("server_host")
+# PalServer.exe
+process_name_to_check = os.path.basename(process_path_to_start) 
+# 127.0.0.1
+server_host = "127.0.0.1"
+# 25585
 server_port = int(CL_Con.get("server_port"))
+# password
 rcon_password = CL_Con.get("rcon_password")
-
-zip_dir = CL_Con.get("zip_dir")
-
-repo_directory = CL_Con.get("repo_directory")
-
-steamcmd_dir_path = CL_Con.get("steamcmd_dir_path")
-steamcmd_exe_path = CL_Con.get("steamcmd_exe_path")
+# C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer\Pal\Saved
+zip_dir = os.path.join(os.path.dirname(process_path_to_start),"Pal","Saved")
+# C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer
+repo_directory = os.path.dirname(process_path_to_start)
+# C:\Users\aaaaa\temp\steamcmd
+steamcmd_dir_path = os.path.dirname(os.path.dirname(os.path.dirname(repo_directory)))
+# C:\Users\aaaaa\temp\steamcmd\steamcmd.exe
+steamcmd_exe_path = os.path.join(steamcmd_dir_path,"steamcmd.exe")
 
 backup_max_age_days=int(CL_Con.get("backup_max_age_days"))
 
@@ -178,12 +183,19 @@ def git_commit(repo_path, text="auto"):
         # リポジトリのディレクトリに移動
         os.chdir(repo_path)
         try:
-            # "git add -A" を実行
-            subprocess.run(['git', 'add', '-A'])
-            # "git commit -m 'メッセージ'" を実行
+            result = subprocess.run(['git', 'init'],capture_output=True)
+            if result.stdout is not None:
+                logger.debug(result.stdout)
+            if result.stderr is not None:
+                if len(result.stderr)>0:
+                    logger.error(result.stderr)
+            result = subprocess.run(['git', 'add', '-A'],capture_output=True)
+            if result.stdout is not None:
+                logger.debug(result.stdout)
+            if result.stderr is not None:
+                if len(result.stderr)>0:
+                    logger.error(result.stderr)
             result = subprocess.run(['git', 'commit', '-m', timestamp + " " + text],capture_output=True, check=False, input="y\n", text=True)
-
-            # 標準出力と標準エラー出力をログに記録
             if result.stdout is not None:
                 logger.debug(result.stdout)
             if result.stderr is not None:
@@ -346,7 +358,7 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
             logger.error("local、remote両方取得できず")
             return 0
 
-def worldsave_safe(host, port, password, process_name_to_check, process_path_to_start,flag_shutdown=False):
+def worldsave_safe(host, port, password, process_name_to_check, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
     logger.debug("start: "+str(sys._getframe().f_code.co_name))
     logger.info("サーバーをダウンさせて、ワールドのコピーを取得し、コミットします。")
     global update_in_progress
@@ -381,17 +393,20 @@ def worldsave_safe(host, port, password, process_name_to_check, process_path_to_
                 if flag_shutdown:
                     # command="Shutdown 60 "
                     # command="Broadcast Shutdown has been scheduled for 60 seconds later."
-                    command="Broadcast Shutdown_has_been_scheduled_for_60_seconds_later."
+                    command="Broadcast Shutdown_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
                     #メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
                 else:
                     # command="Shutdown 60 "
-                    command="Broadcast Reboot_has_been_scheduled_for_60_seconds_later."
+                    command="Broadcast Reboot_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
                     #ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
                 logger.info("Command sent: "+command)
                 response = client.command(command)
                 logger.info("Server response: "+response)
 
-            time.sleep(40)
+            if time_shutdown_sec<1:
+                time.sleep(1)
+            else:
+                time.sleep(time_shutdown_sec)
 
             with mcrcon.MCRcon(host, password, port,timeout=60) as client:
                 command="Save"
