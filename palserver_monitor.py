@@ -36,7 +36,7 @@ CL_Con=ConfigManager()
 # C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer\PalServer.exe
 process_path_to_start = CL_Con.get("process_path_to_start")
 # PalServer.exe
-process_name_to_check = os.path.basename(process_path_to_start) 
+process_name_to_check_list = ["PalServer.exe","PalServer-Win64-Test-Cmd.exe"]
 # 127.0.0.1
 server_host = "127.0.0.1"
 # 25585
@@ -71,11 +71,12 @@ down_count = 0
 rollback_threshold_seconds = 300  # 5分
 
 #プロセスチェック
-def is_process_running(process_name):
+def is_process_running(process_name_list):
     logger.debug("start: "+str(sys._getframe().f_code.co_name))
     for process in psutil.process_iter(['pid', 'name']):
-        if process.info['name'] == process_name:
-            return True
+        for process_name in process_name_list:
+            if process.info['name'] == process_name:
+                return True
     return False
 
 # プロセス起動
@@ -133,7 +134,7 @@ def rollback_process(repo_directory, zip_filepath):
         logger.exception(e)
 
 # プロセス監視
-def processcheck(process_name_to_check, process_path_to_start,flag_first=False):
+def processcheck(process_name_to_check_list, process_path_to_start,flag_first=False):
     try:
         global last_down_time, down_count
 
@@ -143,7 +144,7 @@ def processcheck(process_name_to_check, process_path_to_start,flag_first=False):
             logger.info("アップデート中は処理をスキップします。")
             return 0
 
-        if is_process_running(process_name_to_check):
+        if is_process_running(process_name_to_check_list):
             # logger.info(process_name_to_check+" は既に実行中です。")
             # プロセスが実行中の場合はリセット
             last_down_time = None
@@ -284,12 +285,15 @@ def zip_directory(directory_path):
         logger.exception(e)
         return 1
 
-def kill_palserver(process_name_to_check):
+def kill_palserver(process_name_to_check_list):
     logger.debug("start: "+str(sys._getframe().f_code.co_name))
     try:
         # タスクキルコマンドを実行
-        subprocess.run(["taskkill", "/IM", process_name_to_check, "/F"])
-        logger.info(process_name_to_check+" をタスクキルしました。")
+        for process_name_to_check in process_name_to_check_list:
+            try:
+                subprocess.run(["taskkill", "/IM", process_name_to_check, "/F"])
+                logger.info(process_name_to_check+" をタスクキルしました。")
+            except:pass
         return 0
     except subprocess.CalledProcessError as e:
         logger.info("エラー")
@@ -363,7 +367,7 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
             logger.error("local、remote両方取得できず")
             return 0
 
-def worldsave_safe(host, port, password, process_name_to_check, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
+def worldsave_safe(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
     logger.debug("start: "+str(sys._getframe().f_code.co_name))
     logger.info("サーバーをダウンさせて、ワールドのコピーを取得し、コミットします。")
     global update_in_progress
@@ -371,7 +375,7 @@ def worldsave_safe(host, port, password, process_name_to_check, process_path_to_
     current_hour = datetime.now().hour
 
     try:
-        if is_process_running(process_name_to_check):
+        if is_process_running(process_name_to_check_list):
             with mcrcon.MCRcon(host, password, port,timeout=60) as client:
                 command="Info"
                 logger.info("Command sent: "+command)
@@ -432,13 +436,13 @@ def worldsave_safe(host, port, password, process_name_to_check, process_path_to_
                 logger.info("Server response: "+response)
 
             for i in range(60):
-                if not is_process_running(process_name_to_check):break
+                if not is_process_running(process_name_to_check_list):break
                 time.sleep(1)
             else:
                 #終了しないので、強制的に落とす
-                kill_palserver(process_name_to_check)
+                kill_palserver(process_name_to_check_list)
                 for i in range(60):
-                    if not is_process_running(process_name_to_check):break
+                    if not is_process_running(process_name_to_check_list):break
                     time.sleep(1)
                 else:
                     #タスクキルでも落ちない場合
@@ -504,14 +508,14 @@ def worldsave_nodown(host, port, password):
             logger.exception(e)
             return 1
 
-def worldsave_hour(host, port, password, process_name_to_check, process_path_to_start):
+def worldsave_hour(host, port, password, process_name_to_check_list, process_path_to_start):
     try:
         logger.debug("start: "+str(sys._getframe().f_code.co_name))
         current_hour = datetime.now().hour
         if current_hour % 6 != 0:  # 0時、6時、12時、18時の場合はスキップ
             worldsave_nodown(host, port, password)
         else:
-            worldsave_safe(host, port, password, process_name_to_check, process_path_to_start)
+            worldsave_safe(host, port, password, process_name_to_check_list, process_path_to_start)
     except:pass
 
 def worldsave_half_hour(host, port, password):
@@ -657,7 +661,7 @@ def joinstatus_display(host, password, port):
     #         response = client.command(command)
     #         logger.info("Server response: "+response)
 
-def worldsave(host, port, password, process_name_to_check, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
+def worldsave(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
     """6時は再起動するが、他はアップデートがある場合のみ再起動する"""
     logger.debug("start: "+str(sys._getframe().f_code.co_name))
     global update_in_progress
@@ -669,7 +673,7 @@ def worldsave(host, port, password, process_name_to_check, process_path_to_start
         else:logger.info("アップデートありのため、サーバーアップデートを実施")
         update_in_progress = True
         try:
-            if is_process_running(process_name_to_check):
+            if is_process_running(process_name_to_check_list):
                 with mcrcon.MCRcon(host, password, port,timeout=60) as client:
                     command="Info"
                     logger.info("Command sent: "+command)
@@ -727,13 +731,13 @@ def worldsave(host, port, password, process_name_to_check, process_path_to_start
                     logger.info("Server response: "+response)
 
                 for i in range(60):
-                    if not is_process_running(process_name_to_check):break
+                    if not is_process_running(process_nameprocess_name_to_check_list_to_check):break
                     time.sleep(1)
                 else:
                     #終了しないので、強制的に落とす
-                    kill_palserver(process_name_to_check)
+                    kill_palserver(process_name_to_check_list)
                     for i in range(60):
-                        if not is_process_running(process_name_to_check):break
+                        if not is_process_running(process_name_to_check_list):break
                         time.sleep(1)
                     else:
                         #タスクキルでも落ちない場合
@@ -793,10 +797,10 @@ def main():
     logger.info("キーボードで 'q' が押されたら終了")
 
     #初回起動チェック
-    processcheck(process_name_to_check, process_path_to_start,True)
+    processcheck(process_name_to_check_list, process_path_to_start,True)
 
     # 1分ごとに実行
-    schedule.every().minute.at(":30").do(lambda: processcheck(process_name_to_check, process_path_to_start))
+    schedule.every().minute.at(":30").do(lambda: processcheck(process_name_to_check_list, process_path_to_start))
     
     # 30分ごとに実行
     # アップデートがあるならアップデートして再起動
@@ -807,8 +811,8 @@ def main():
     # schedule.every().hour.at(":30").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":40").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":50").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
-    schedule.every().hour.at(":00").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start))
-    schedule.every().hour.at(":30").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start))
+    schedule.every().hour.at(":00").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start))
+    schedule.every().hour.at(":30").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start))
     
 
     while True:
