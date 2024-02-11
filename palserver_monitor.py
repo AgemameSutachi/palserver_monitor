@@ -54,6 +54,11 @@ steamcmd_exe_path = os.path.join(steamcmd_dir_path,"steamcmd.exe")
 
 backup_max_age_days=int(CL_Con.get("backup_max_age_days"))
 
+
+
+
+
+#入退出管理(showplayers不具合のため、未使用)
 joinstatuscsv_path=CL_Con.get("joinstatuscsv_path")
 
 update_in_progress = False
@@ -342,7 +347,7 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
     if flag_found_local:
         if flag_found_remote:
             if build_id_locale == build_id_remote:
-                logger.debug("build_idが一致:"+str(build_id_locale)+" "+str(build_id_remote))
+                logger.info("build_idが一致:"+str(build_id_locale)+" "+str(build_id_remote))
                 return 0
             else:
                 logger.info("build_idが不一致:"+str(build_id_locale)+" "+str(build_id_remote))
@@ -652,6 +657,136 @@ def joinstatus_display(host, password, port):
     #         response = client.command(command)
     #         logger.info("Server response: "+response)
 
+def worldsave(host, port, password, process_name_to_check, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
+    """6時は再起動するが、他はアップデートがある場合のみ再起動する"""
+    logger.debug("start: "+str(sys._getframe().f_code.co_name))
+    global update_in_progress
+    current_hour = datetime.now().hour
+
+    if current_hour==6 or isNeedUpdate():
+        #6時、もしくはアップデートありのため、アップデートして再起動
+        if current_hour==6:logger.info("6時のため、サーバーアップデートを実施")
+        else:logger.info("アップデートありのため、サーバーアップデートを実施")
+        update_in_progress = True
+        try:
+            if is_process_running(process_name_to_check):
+                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+                    command="Info"
+                    logger.info("Command sent: "+command)
+                    response = client.command(command)
+                    logger.info("Server response: "+response)
+                time.sleep(1)
+
+                #ShowPlayersはバグって続きが取得できないのでコメントアウト
+                # with mcrcon.MCRcon(host, password, port) as client:
+                #     command="ShowPlayers"
+                #     logger.info("Command sent: "+command)
+                #     response = client.command(command)
+                #     logger.info("Server response: "+response)
+                # time.sleep(1)
+                
+                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+                    command="Save"
+                    logger.info("Command sent: "+command)
+                    response = client.command(command)
+                    logger.info("Server response: "+response)
+                time.sleep(1)
+                
+                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+                    if flag_shutdown:
+                        command="Broadcast Shutdown_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
+                        #メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
+                    else:
+                        command="Broadcast Reboot_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
+                        #ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
+                    logger.info("Command sent: "+command)
+                    response = client.command(command)
+                    logger.info("Server response: "+response)
+
+                if time_shutdown_sec<1:
+                    time.sleep(1)
+                else:
+                    time.sleep(time_shutdown_sec)
+
+                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+                    command="Save"
+                    logger.info("Command sent: "+command)
+                    response = client.command(command)
+                    logger.info("Server response: "+response)
+                time.sleep(1)
+                
+                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+                    if flag_shutdown:
+                        # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
+                        command="Shutdown 10 "
+                    else:
+                        # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
+                        command="Shutdown 10 "
+                    logger.info("Command sent: "+command)
+                    response = client.command(command)
+                    logger.info("Server response: "+response)
+
+                for i in range(60):
+                    if not is_process_running(process_name_to_check):break
+                    time.sleep(1)
+                else:
+                    #終了しないので、強制的に落とす
+                    kill_palserver(process_name_to_check)
+                    for i in range(60):
+                        if not is_process_running(process_name_to_check):break
+                        time.sleep(1)
+                    else:
+                        #タスクキルでも落ちない場合
+                        logger.info("タスクキルしても落とせなかったのでコミット等を行いません")
+                        return 1
+            zip_directory(zip_dir)
+            git_commit(repo_directory)
+            worldupdate(steamcmd_dir_path, repo_directory)
+            git_commit(repo_directory,"updated")
+            start_process(process_path_to_start)
+            return 0
+        except Exception as e:
+            logger.info("エラー")
+            errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
+            logger.exception(e)
+            return 1
+        finally:
+            update_in_progress = False
+    else:
+        #アップデートなしか、取得できないため、再起動しない
+        logger.info("サーバーをダウンさせずにワールドのコピーを取得します。")
+        try:
+            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+                command="Info"
+                logger.info("Command sent: "+command)
+                response = client.command(command)
+                logger.info("Server response: "+response)
+            time.sleep(1)
+            
+            #ShowPlayersはバグって続きが取得できないのでコメントアウト
+            # with mcrcon.MCRcon(host, password, port) as client:
+            #     command="ShowPlayers"
+            #     logger.info("Command sent: "+command)
+            #     response = client.command(command)
+            #     logger.info("Server response: "+response)
+            # time.sleep(1)
+            
+            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+                command="Save"
+                logger.info("Command sent: "+command)
+                response = client.command(command)
+                logger.info("Server response: "+response)
+            time.sleep(2)
+
+            zip_directory(zip_dir)
+            return 0
+        except mcrcon.MCRconException as e:
+            logger.info("エラー")
+            errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
+            logger.exception(e)
+            return 1
+
+
 def main():
     logger.debug("start: "+str(sys._getframe().f_code.co_name))
     logger.info(print_txt)
@@ -664,15 +799,17 @@ def main():
     schedule.every().minute.at(":30").do(lambda: processcheck(process_name_to_check, process_path_to_start))
     
     # 30分ごとに実行
-    # 0時、6時、12時、18時はシャットダウンしてコミットもする
-    # 6時はアップデートも行う
-    schedule.every().hour.at(":00").do(lambda: worldsave_hour(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start))
+    # アップデートがあるならアップデートして再起動
+    # 6時は強制アップデート
+    # schedule.every().hour.at(":00").do(lambda: worldsave_hour(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start))
     # schedule.every().hour.at(":10").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":20").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
-    schedule.every().hour.at(":30").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
+    # schedule.every().hour.at(":30").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":40").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":50").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
-
+    schedule.every().hour.at(":00").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start))
+    schedule.every().hour.at(":30").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check, process_path_to_start))
+    
 
     while True:
         schedule.run_pending()
