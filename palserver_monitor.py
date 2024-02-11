@@ -76,7 +76,9 @@ def is_process_running(process_name_list):
     for process in psutil.process_iter(['pid', 'name']):
         for process_name in process_name_list:
             if process.info['name'] == process_name:
+                logger.debug(f"Process {process_name} is running (PID: {process.info['pid']})")
                 return True
+    logger.debug("No matching processes found")
     return False
 
 # プロセス起動
@@ -731,7 +733,7 @@ def worldsave(host, port, password, process_name_to_check_list, process_path_to_
                     logger.info("Server response: "+response)
 
                 for i in range(60):
-                    if not is_process_running(process_nameprocess_name_to_check_list_to_check):break
+                    if not is_process_running(process_name_to_check_list):break
                     time.sleep(1)
                 else:
                     #終了しないので、強制的に落とす
