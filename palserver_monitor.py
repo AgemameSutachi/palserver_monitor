@@ -459,15 +459,6 @@ def worldsave_safe(host, port, password, process_name_to_check_list, process_pat
         if flag_shutdown:
             return 0
         else:
-            if current_hour == 6:
-                logger.info("6時のため、サーバーアップデートを実施")
-                worldupdate(steamcmd_dir_path, repo_directory)
-                git_commit(repo_directory,"updated")
-            else:
-                logger.info("アップデートがあるか確認")
-                if isNeedUpdate():
-                    worldupdate(steamcmd_dir_path, repo_directory)
-                    git_commit(repo_directory,"updated")
             start_process(process_path_to_start)
             return 0
     except Exception as e:
