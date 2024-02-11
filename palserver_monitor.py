@@ -51,9 +51,13 @@ repo_directory = os.path.dirname(process_path_to_start)
 steamcmd_dir_path = os.path.dirname(os.path.dirname(os.path.dirname(repo_directory)))
 # C:\Users\aaaaa\temp\steamcmd\steamcmd.exe
 steamcmd_exe_path = os.path.join(steamcmd_dir_path,"steamcmd.exe")
-
+#10
 backup_max_age_days=int(CL_Con.get("backup_max_age_days"))
-
+#True
+if CL_Con.get("flag_reboot","True") in ["0","FALSE","False","false"]:
+    flag_reboot=False
+else:
+    flag_reboot=True
 
 
 
@@ -663,14 +667,14 @@ def joinstatus_display(host, password, port):
     #         response = client.command(command)
     #         logger.info("Server response: "+response)
 
-def worldsave(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
+def worldsave(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60,flag_reboot=True):
     """6時は再起動するが、他はアップデートがある場合のみ再起動する"""
     logger.debug("start: "+str(sys._getframe().f_code.co_name))
     global update_in_progress
     current_hour = datetime.now().hour
 
-    if current_hour==6 or isNeedUpdate():
-        #6時、もしくはアップデートありのため、アップデートして再起動
+    if (current_hour==6 and flag_reboot) or isNeedUpdate():
+        #6時かつrebootフラグon、もしくはアップデートありのため、アップデートして再起動
         if current_hour==6:logger.info("6時のため、サーバーアップデートを実施")
         else:logger.info("アップデートありのため、サーバーアップデートを実施")
         update_in_progress = True
@@ -813,8 +817,8 @@ def main():
     # schedule.every().hour.at(":30").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":40").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":50").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
-    schedule.every().hour.at(":00").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start))
-    schedule.every().hour.at(":30").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start))
+    schedule.every().hour.at(":00").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60,flag_reboot=flag_reboot))
+    schedule.every().hour.at(":30").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60,flag_reboot=flag_reboot))
     
 
     while True:

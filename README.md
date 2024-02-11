@@ -52,3 +52,5 @@
   - rconのパスワード(AdminPasswordに設定した項目)
 - backup_max_age_days = 10
   - どのくらいの日数zipファイルを保存しておくか
+- flag_reboot
+  - 毎日6時に再起動するかどうか(Falseにしてもアップデートを検出したら再起動します)

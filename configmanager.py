@@ -14,7 +14,8 @@ default_config_dic={
     # "steamcmd_dir_path":"C:\\Users\\aaaaa\\steamcmd",
     # "steamcmd_exe_path":"C:\\Users\\aaaaa\\steamcmd\\steamcmd.exe",
     "backup_max_age_days":"10",
-    # "joinstatuscsv_path":"joinStatus.csv"
+    # "joinstatuscsv_path":"joinStatus.csv",
+    "flag_reboot":True,
 }
 
 class ConfigManager():
@@ -44,5 +45,8 @@ class ConfigManager():
             logger.error("設定ファイル作成失敗: "+self.config_path)
             raise
     
-    def get(self,key):
-        return self.config_dic.get(key,"")
+    def get(self,key,default=None):
+        if default is None:
+            return self.config_dic.get(key,"")
+        else:
+            return self.config_dic.get(key,default)
