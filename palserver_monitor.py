@@ -8,7 +8,6 @@ print_txt="""
 """
 from com import getLogger
 import psutil
-import subprocess
 import mcrcon
 import time
 import subprocess
@@ -309,37 +308,41 @@ def kill_palserver(process_name_to_check_list):
 
 def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
     def get_buildid_local(timeout_sec=10):
-        result_locale = subprocess.run(
-            [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_status 2394010", "+quit"],
-            stdout=subprocess.PIPE,
-            encoding='utf-8',
-            timeout=60
-        )
-        pattern = r"BuildID (\d+)"
-        for _ in range(timeout_sec):
-            time.sleep(1)
-            match = re.search(pattern, result_locale.stdout)
-            if match:
-                build_id_locale = match.group(1)
-                logger.debug("Locale BuildID:"+str(build_id_locale))
-                return 1, build_id_locale
+        try:
+            result_locale = subprocess.run(
+                [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_status 2394010", "+quit"],
+                stdout=subprocess.PIPE,
+                encoding='utf-8',
+                timeout=60
+            )
+            pattern = r"BuildID (\d+)"
+            for _ in range(timeout_sec):
+                time.sleep(1)
+                match = re.search(pattern, result_locale.stdout)
+                if match:
+                    build_id_locale = match.group(1)
+                    logger.debug("Locale BuildID:"+str(build_id_locale))
+                    return 1, build_id_locale
+        except:pass
         return 0, ""
 
     def get_buildid_remote(timeout_sec=10):
-        result_remote = subprocess.run(
-            [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_info_print 2394010", "+quit"],
-            stdout=subprocess.PIPE,
-            encoding='utf-8',
-            timeout=60
-        )
-        pattern = r'"public"\s*{\s*"buildid"\s+"(\d+)"'
-        for _ in range(timeout_sec):
-            time.sleep(1)
-            match = re.search(pattern, result_remote.stdout)
-            if match:
-                build_id_remote = match.group(1)
-                logger.debug("Remote BuildID:"+str(build_id_remote))
-                return 1, build_id_remote
+        try:
+            result_remote = subprocess.run(
+                [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_info_print 2394010", "+quit"],
+                stdout=subprocess.PIPE,
+                encoding='utf-8',
+                timeout=60
+            )
+            pattern = r'"public"\s*{\s*"buildid"\s+"(\d+)"'
+            for _ in range(timeout_sec):
+                time.sleep(1)
+                match = re.search(pattern, result_remote.stdout)
+                if match:
+                    build_id_remote = match.group(1)
+                    logger.debug("Remote BuildID:"+str(build_id_remote))
+                    return 1, build_id_remote
+        except:pass
         return 0, ""
 
     for _ in range(retry_num):
