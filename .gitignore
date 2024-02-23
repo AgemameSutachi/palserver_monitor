@@ -207,3 +207,4 @@ test*
 0_EXECreate.bat
 0_VEnvCreate.bat
 1_EXEMove.bat
+Log/
