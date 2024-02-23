@@ -2,11 +2,17 @@
 サーバーをアップデートするツール
 """
 
-from com import getLogger
-import os
+from com import log_decorator
 from configmanager import ConfigManager
 import logging
-logger=logging.getLogger(__name__)
+import ssl
+import certifi
+
+# from slackapi import textpost, imagepost, imagepost_from_url
+
+logger = logging.getLogger(__name__)
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+import os
 
 default_config_dic={
     # "process_name_to_check": "PalServer.exe",
