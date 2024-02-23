@@ -6,7 +6,16 @@ print_txt="""
 6時間ごとにワールドをシャットダウンしてアップデートがあったらアップデートして、zip化してコピーしてgit commitする(プロセス監視はこの間停止)
 毎日6時に強制的にサーバーアップデートする(プロセス監視はこの間停止)
 """
-from com import getLogger
+from com import log_decorator
+from configmanager import ConfigManager
+import logging
+import ssl
+import certifi
+
+# from slackapi import textpost, imagepost, imagepost_from_url
+
+logger = logging.getLogger(__name__)
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 import psutil
 import mcrcon
 import time
@@ -19,29 +28,43 @@ import schedule
 from pysteamcmdwrapper import SteamCMD, SteamCMDException
 import keyboard
 import traceback
-import pyautogui as pgui
-import threading
 from configmanager import ConfigManager
 import logging
 import shutil
 import codecs
 import csv
 import re
-from pandas import read_csv
 logger=logging.getLogger(__name__)
 
-CL_Con=ConfigManager()
+default_config_dic={
+    # "process_name_to_check": "PalServer.exe",
+    "process_path_to_start": "C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer\\PalServer.exe",
+    # "server_host":"127.0.0.1",
+    "server_port":"25585",
+    "rcon_password":"password",
+    # "zip_dir":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer\\Pal\\Saved",
+    # "repo_directory":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer",
+    # "steamcmd_dir_path":"C:\\Users\\aaaaa\\steamcmd",
+    # "steamcmd_exe_path":"C:\\Users\\aaaaa\\steamcmd\\steamcmd.exe",
+    "backup_max_age_days":"10",
+    # "joinstatuscsv_path":"joinStatus.csv",
+    "flag_reboot":True,
+}
+
+Cl_Con = ConfigManager(
+    default_dic=default_config_dic, config_path="./palserver_monitor.ini", encoding="cp932"
+)
 
 # C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer\PalServer.exe
-process_path_to_start = CL_Con.get("process_path_to_start")
+process_path_to_start = Cl_Con.get("process_path_to_start")
 # PalServer.exe
 process_name_to_check_list = ["PalServer.exe","PalServer-Win64-Test-Cmd.exe"]
 # 127.0.0.1
 server_host = "127.0.0.1"
 # 25585
-server_port = int(CL_Con.get("server_port"))
+server_port = int(Cl_Con.get("server_port"))
 # password
-rcon_password = CL_Con.get("rcon_password")
+rcon_password = Cl_Con.get("rcon_password")
 # C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer\Pal\Saved
 zip_dir = os.path.join(os.path.dirname(process_path_to_start),"Pal","Saved")
 # C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer
@@ -51,9 +74,9 @@ steamcmd_dir_path = os.path.dirname(os.path.dirname(os.path.dirname(repo_directo
 # C:\Users\aaaaa\temp\steamcmd\steamcmd.exe
 steamcmd_exe_path = os.path.join(steamcmd_dir_path,"steamcmd.exe")
 #10
-backup_max_age_days=int(CL_Con.get("backup_max_age_days"))
+backup_max_age_days=int(Cl_Con.get("backup_max_age_days"))
 #True
-if CL_Con.get("flag_reboot","True") in ["0","FALSE","False","false"]:
+if Cl_Con.get("flag_reboot","True") in ["0","FALSE","False","false"]:
     flag_reboot=False
 else:
     flag_reboot=True
@@ -62,7 +85,7 @@ else:
 
 
 #入退出管理(showplayers不具合のため、未使用)
-joinstatuscsv_path=CL_Con.get("joinstatuscsv_path")
+joinstatuscsv_path=Cl_Con.get("joinstatuscsv_path")
 
 update_in_progress = False
 
@@ -74,8 +97,8 @@ down_count = 0
 rollback_threshold_seconds = 300  # 5分
 
 #プロセスチェック
+@log_decorator(logger)
 def is_process_running(process_name_list):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     for process in psutil.process_iter(['pid', 'name']):
         for process_name in process_name_list:
             if process.info['name'] == process_name:
@@ -85,8 +108,8 @@ def is_process_running(process_name_list):
     return False
 
 # プロセス起動
+@log_decorator(logger)
 def start_process(process_path):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     try:
         subprocess.Popen(process_path)
         logger.info(f"{process_path} を起動しました。")
@@ -95,8 +118,8 @@ def start_process(process_path):
         errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
 
+@log_decorator(logger)
 def unzip_directory(zip_filepath, extract_path):
-    logger.debug("start: " + str(sys._getframe().f_code.co_name))
     try:
         # ZIPファイルを解凍
         with zipfile.ZipFile(zip_filepath, 'r') as zipf:
@@ -110,6 +133,7 @@ def unzip_directory(zip_filepath, extract_path):
         logger.exception(e)
         return 1
 
+@log_decorator(logger)
 def rollback_process(repo_directory, zip_filepath):
     # ロールバック処理
     try:
@@ -139,6 +163,7 @@ def rollback_process(repo_directory, zip_filepath):
         logger.exception(e)
 
 # プロセス監視
+@log_decorator(logger)
 def processcheck(process_name_to_check_list, process_path_to_start,flag_first=False):
     try:
         global last_down_time, down_count
@@ -185,6 +210,7 @@ def processcheck(process_name_to_check_list, process_path_to_start,flag_first=Fa
 
 
 #rcon
+@log_decorator(logger)
 def git_commit(repo_path, text="auto"):
     try:
         # 現在の日時を取得
@@ -230,9 +256,8 @@ def git_commit(repo_path, text="auto"):
         return 1
 
 
-
+@log_decorator(logger)
 def delete_old_backups(directory_path, max_age_days):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     try:
         # 現在の日時を取得
         current_datetime = datetime.now()
@@ -258,8 +283,8 @@ def delete_old_backups(directory_path, max_age_days):
         logger.exception(e)
         return 1
 
+@log_decorator(logger)
 def zip_directory(directory_path):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     # 現在の日時を取得
     current_datetime = datetime.now()
     # 日時をフォーマット
@@ -290,8 +315,8 @@ def zip_directory(directory_path):
         logger.exception(e)
         return 1
 
+@log_decorator(logger)
 def kill_palserver(process_name_to_check_list):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     try:
         # タスクキルコマンドを実行
         for process_name_to_check in process_name_to_check_list:
@@ -306,7 +331,9 @@ def kill_palserver(process_name_to_check_list):
         logger.exception(e)
         return 1
 
+@log_decorator(logger)
 def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
+    @log_decorator(logger)
     def get_buildid_local(timeout_sec=10):
         try:
             result_locale = subprocess.run(
@@ -326,6 +353,7 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
         except:pass
         return 0, ""
 
+    @log_decorator(logger)
     def get_buildid_remote(timeout_sec=10):
         try:
             result_remote = subprocess.run(
@@ -376,8 +404,8 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
             logger.error("local、remote両方取得できず")
             return 0
 
+@log_decorator(logger)
 def worldsave_safe(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     logger.info("サーバーをダウンさせて、ワールドのコピーを取得し、コミットします。")
     global update_in_progress
     update_in_progress = True
@@ -472,9 +500,8 @@ def worldsave_safe(host, port, password, process_name_to_check_list, process_pat
     finally:
         update_in_progress = False
 
-
+@log_decorator(logger)
 def worldsave_nodown(host, port, password):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     logger.info("サーバーをダウンさせずにワールドのコピーを取得します。")
     if not update_in_progress:
         try:
@@ -508,9 +535,9 @@ def worldsave_nodown(host, port, password):
             logger.exception(e)
             return 1
 
+@log_decorator(logger)
 def worldsave_hour(host, port, password, process_name_to_check_list, process_path_to_start):
     try:
-        logger.debug("start: "+str(sys._getframe().f_code.co_name))
         current_hour = datetime.now().hour
         if current_hour % 6 != 0:  # 0時、6時、12時、18時の場合はスキップ
             worldsave_nodown(host, port, password)
@@ -518,15 +545,15 @@ def worldsave_hour(host, port, password, process_name_to_check_list, process_pat
             worldsave_safe(host, port, password, process_name_to_check_list, process_path_to_start)
     except:pass
 
+@log_decorator(logger)
 def worldsave_half_hour(host, port, password):
     try:
-        logger.debug("start: "+str(sys._getframe().f_code.co_name))
         worldsave_nodown(host, port, password)
     except:pass
 
 # アップデート処理
+@log_decorator(logger)
 def worldupdate(steamcmd_dir_path, repo_directory,flag_manual=False):
-    logger.debug("start: " + str(sys._getframe().f_code.co_name))
     try:
         # カレントディレクトリを保存
         current_directory = os.getcwd()
@@ -572,8 +599,8 @@ def worldupdate(steamcmd_dir_path, repo_directory,flag_manual=False):
 
 
 #ライブラリでのアップデート(未使用)
+@log_decorator(logger)
 def worldupdate2(steamcmd_dir_path, repo_directory):
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     try:
         # カレントディレクトリを保存
         current_directory = os.getcwd()
@@ -594,7 +621,7 @@ def worldupdate2(steamcmd_dir_path, repo_directory):
         # 元の作業ディレクトリに戻る
         os.chdir(current_directory)
 
-
+@log_decorator(logger)
 def joinstatuscsv_read():
     #ShowPlayersはバグって続きが取得できないのでコメントアウト
     # name,playeruid,steamid
@@ -610,6 +637,7 @@ def joinstatuscsv_read():
 
     return data
 
+@log_decorator(logger)
 def joinstatuscsv_write(data, header=['name', 'playeruid', 'steamid']):
     #ShowPlayersはバグって続きが取得できないのでコメントアウト
     # data_to_write = [
@@ -626,7 +654,7 @@ def joinstatuscsv_write(data, header=['name', 'playeruid', 'steamid']):
         for row in data:
             writer.writerow(row)
 
-
+# @log_decorator(logger)
 # def joinstatus_check(txt):
 #     joinstatuscsv_path
 #     with open(joinstatuscsv_path,mode="r") as f:
@@ -644,10 +672,10 @@ def joinstatuscsv_write(data, header=['name', 'playeruid', 'steamid']):
 #     default_detail_dic=dict(zip(df["key"], df["detail"]))
 #     return default_ini_dic, default_detail_dic
 
+@log_decorator(logger)
 def joinstatus_display(host, password, port):
     """入退出状況を表示する"""
     #ShowPlayersはバグって続きが取得できないのでコメントアウト
-    logger.debug("start: " + str(sys._getframe().f_code.co_name))
     # try:
     #     with mcrcon.MCRcon(host, password, port) as client:
     #         command="ShowPlayers"
@@ -661,9 +689,9 @@ def joinstatus_display(host, password, port):
     #         response = client.command(command)
     #         logger.info("Server response: "+response)
 
+@log_decorator(logger)
 def worldsave(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60,flag_reboot=True):
     """6時は再起動するが、他はアップデートがある場合のみ再起動する"""
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     global update_in_progress
     current_hour = datetime.now().hour
 
@@ -790,9 +818,8 @@ def worldsave(host, port, password, process_name_to_check_list, process_path_to_
             logger.exception(e)
             return 1
 
-
+@log_decorator(logger)
 def main():
-    logger.debug("start: "+str(sys._getframe().f_code.co_name))
     logger.info(print_txt)
     logger.info("キーボードで 'q' が押されたら終了")
 

@@ -34,7 +34,7 @@ MANIFEST
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
+# *.spec
 
 # Installer logs
 pip-log.txt
@@ -200,9 +200,10 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/windows,python
-
-**/EXECreate*
-**/EXEMove*
-**/VEnvCreate*
+test.ipynb
+config/
 mcrcon*
 test*
+0_EXECreate.bat
+0_VEnvCreate.bat
+1_EXEMove.bat
