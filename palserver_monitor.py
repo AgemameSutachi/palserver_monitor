@@ -1,4 +1,4 @@
-print_txt="""
+print_txt = """
 パルワールドサーバーの管理プログラム
 
 毎分プロセス監視して起動していなかったら起動する
@@ -34,31 +34,32 @@ import shutil
 import codecs
 import csv
 import re
-logger=logging.getLogger(__name__)
 
-default_config_dic={
+default_config_dic = {
     # "process_name_to_check": "PalServer.exe",
     "process_path_to_start": "C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer\\PalServer.exe",
     # "server_host":"127.0.0.1",
-    "server_port":"25585",
-    "rcon_password":"password",
+    "server_port": "25585",
+    "rcon_password": "password",
     # "zip_dir":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer\\Pal\\Saved",
     # "repo_directory":"C:\\Users\\aaaaa\\steamcmd\\steamapps\\common\\PalServer",
     # "steamcmd_dir_path":"C:\\Users\\aaaaa\\steamcmd",
     # "steamcmd_exe_path":"C:\\Users\\aaaaa\\steamcmd\\steamcmd.exe",
-    "backup_max_age_days":"10",
+    "backup_max_age_days": "10",
     # "joinstatuscsv_path":"joinStatus.csv",
-    "flag_reboot":True,
+    "flag_reboot": True,
 }
 
 Cl_Con = ConfigManager(
-    default_dic=default_config_dic, config_path="./palserver_monitor.ini", encoding="cp932"
+    default_dic=default_config_dic,
+    config_path="./palserver_monitor.ini",
+    encoding="cp932",
 )
 
 # C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer\PalServer.exe
 process_path_to_start = Cl_Con.get("process_path_to_start")
 # PalServer.exe
-process_name_to_check_list = ["PalServer.exe","PalServer-Win64-Test-Cmd.exe"]
+process_name_to_check_list = ["PalServer.exe", "PalServer-Win64-Test-Cmd.exe"]
 # 127.0.0.1
 server_host = "127.0.0.1"
 # 25585
@@ -66,26 +67,24 @@ server_port = int(Cl_Con.get("server_port"))
 # password
 rcon_password = Cl_Con.get("rcon_password")
 # C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer\Pal\Saved
-zip_dir = os.path.join(os.path.dirname(process_path_to_start),"Pal","Saved")
+zip_dir = os.path.join(os.path.dirname(process_path_to_start), "Pal", "Saved")
 # C:\Users\aaaaa\temp\steamcmd\steamapps\common\PalServer
 repo_directory = os.path.dirname(process_path_to_start)
 # C:\Users\aaaaa\temp\steamcmd
 steamcmd_dir_path = os.path.dirname(os.path.dirname(os.path.dirname(repo_directory)))
 # C:\Users\aaaaa\temp\steamcmd\steamcmd.exe
-steamcmd_exe_path = os.path.join(steamcmd_dir_path,"steamcmd.exe")
-#10
-backup_max_age_days=int(Cl_Con.get("backup_max_age_days"))
-#True
-if Cl_Con.get("flag_reboot","True") in ["0","FALSE","False","false"]:
-    flag_reboot=False
+steamcmd_exe_path = os.path.join(steamcmd_dir_path, "steamcmd.exe")
+# 10
+backup_max_age_days = int(Cl_Con.get("backup_max_age_days"))
+# True
+if Cl_Con.get("flag_reboot", "True") in ["0", "FALSE", "False", "false"]:
+    flag_reboot = False
 else:
-    flag_reboot=True
+    flag_reboot = True
 
 
-
-
-#入退出管理(showplayers不具合のため、未使用)
-joinstatuscsv_path=Cl_Con.get("joinstatuscsv_path")
+# 入退出管理(showplayers不具合のため、未使用)
+joinstatuscsv_path = Cl_Con.get("joinstatuscsv_path")
 
 update_in_progress = False
 
@@ -96,16 +95,20 @@ down_count = 0
 # ロールバックを行う閾値（秒）
 rollback_threshold_seconds = 300  # 5分
 
-#プロセスチェック
+
+# プロセスチェック
 @log_decorator(logger)
 def is_process_running(process_name_list):
-    for process in psutil.process_iter(['pid', 'name']):
+    for process in psutil.process_iter(["pid", "name"]):
         for process_name in process_name_list:
-            if process.info['name'] == process_name:
-                logger.debug(f"Process {process_name} is running (PID: {process.info['pid']})")
+            if process.info["name"] == process_name:
+                logger.debug(
+                    f"Process {process_name} is running (PID: {process.info['pid']})"
+                )
                 return True
     logger.debug("No matching processes found")
     return False
+
 
 # プロセス起動
 @log_decorator(logger)
@@ -114,24 +117,22 @@ def start_process(process_path):
         subprocess.Popen(process_path)
         logger.info(f"{process_path} を起動しました。")
     except Exception as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
+
 
 @log_decorator(logger)
 def unzip_directory(zip_filepath, extract_path):
     try:
         # ZIPファイルを解凍
-        with zipfile.ZipFile(zip_filepath, 'r') as zipf:
+        with zipfile.ZipFile(zip_filepath, "r") as zipf:
             zipf.extractall(extract_path)
 
         logger.info("ZIPファイルを解凍しました: " + extract_path)
         return 0
     except Exception as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
         return 1
+
 
 @log_decorator(logger)
 def rollback_process(repo_directory, zip_filepath):
@@ -159,12 +160,12 @@ def rollback_process(repo_directory, zip_filepath):
         logger.info("ロールバックが完了しました。")
     except Exception as e:
         logger.error("ロールバック処理中にエラーが発生しました。")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
+
 
 # プロセス監視
 @log_decorator(logger)
-def processcheck(process_name_to_check_list, process_path_to_start,flag_first=False):
+def processcheck(process_name_to_check_list, process_path_to_start, flag_first=False):
     try:
         global last_down_time, down_count
 
@@ -186,7 +187,9 @@ def processcheck(process_name_to_check_list, process_path_to_start,flag_first=Fa
             logger.warning("プロセスダウンを検知しました。")
 
             # 前回のダウン検知から一定時間以内に再度ダウン検知された場合
-            if last_down_time and datetime.now() - last_down_time < timedelta(seconds=rollback_threshold_seconds):
+            if last_down_time and datetime.now() - last_down_time < timedelta(
+                seconds=rollback_threshold_seconds
+            ):
                 down_count += 1
             else:
                 down_count = 1
@@ -194,7 +197,9 @@ def processcheck(process_name_to_check_list, process_path_to_start,flag_first=Fa
             last_down_time = datetime.now()
 
             if down_count >= 2:
-                logger.error("短時間に複数回プロセスダウンが検知されました。ロールバックを行います。\n現在未実装")
+                logger.error(
+                    "短時間に複数回プロセスダウンが検知されました。ロールバックを行います。\n現在未実装"
+                )
                 # ロールバックのための処理を実行
                 # rollback_process(repo_directory,zip_filepath)
 
@@ -204,12 +209,12 @@ def processcheck(process_name_to_check_list, process_path_to_start,flag_first=Fa
                 logger.info("再起動します。")
                 git_commit(repo_directory, "crash!!")
                 start_process(process_path_to_start)
-    except:
+    except Exception as e:
         pass
     return 0
 
 
-#rcon
+# rcon
 @log_decorator(logger)
 def git_commit(repo_path, text="auto"):
     try:
@@ -220,38 +225,40 @@ def git_commit(repo_path, text="auto"):
         # リポジトリのディレクトリに移動
         os.chdir(repo_path)
         try:
-            result = subprocess.run(['git', 'init'],capture_output=True)
+            result = subprocess.run(["git", "init"], capture_output=True)
             if result.stdout is not None:
                 logger.debug(result.stdout)
             if result.stderr is not None:
-                if len(result.stderr)>0:
+                if len(result.stderr) > 0:
                     logger.error(result.stderr)
-            result = subprocess.run(['git', 'add', '-A'],capture_output=True)
+            result = subprocess.run(["git", "add", "-A"], capture_output=True)
             if result.stdout is not None:
                 logger.debug(result.stdout)
             if result.stderr is not None:
-                if len(result.stderr)>0:
+                if len(result.stderr) > 0:
                     logger.error(result.stderr)
-            result = subprocess.run(['git', 'commit', '-m', timestamp + " " + text],capture_output=True, check=False, input="y\n", text=True)
+            result = subprocess.run(
+                ["git", "commit", "-m", timestamp + " " + text],
+                capture_output=True,
+                check=False,
+                input="y\n",
+                text=True,
+            )
             if result.stdout is not None:
                 logger.debug(result.stdout)
             if result.stderr is not None:
-                if len(result.stderr)>0:
+                if len(result.stderr) > 0:
                     logger.error(result.stderr)
 
             logger.info("コミットしました。: " + timestamp + " " + text)
             return 0
         except Exception as e:
-            logger.info("エラー")
-            errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
             logger.exception(e)
             return 1
         finally:
             # 元のディレクトリに戻る
             os.chdir(current_directory)
     except Exception as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
         return 1
 
@@ -263,7 +270,11 @@ def delete_old_backups(directory_path, max_age_days):
         current_datetime = datetime.now()
 
         # ディレクトリ内のファイルを取得
-        files = [f for f in os.listdir(directory_path) if os.path.isfile(os.path.join(directory_path, f))]
+        files = [
+            f
+            for f in os.listdir(directory_path)
+            if os.path.isfile(os.path.join(directory_path, f))
+        ]
 
         for file in files:
             file_path = os.path.join(directory_path, file)
@@ -274,14 +285,13 @@ def delete_old_backups(directory_path, max_age_days):
             if (current_datetime - created_time).days > max_age_days:
                 # ファイルが10日以上前のものなら削除
                 os.remove(file_path)
-                logger.info("古いバックアップを削除しました: "+file_path)
+                logger.info("古いバックアップを削除しました: " + file_path)
 
         return 0
     except Exception as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
         return 1
+
 
 @log_decorator(logger)
 def zip_directory(directory_path):
@@ -293,27 +303,26 @@ def zip_directory(directory_path):
     zip_filename = f"{timestamp}.zip"
     # 圧縮先のパスを作成
     zip_filepath = os.path.join(os.path.dirname(directory_path), zip_filename)
-    
+
     try:
         # zipファイルを作成
-        with zipfile.ZipFile(zip_filepath, 'w') as zipf:
+        with zipfile.ZipFile(zip_filepath, "w") as zipf:
             # ディレクトリ内のファイルを追加
             for root, dirs, files in os.walk(directory_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     arcname = os.path.relpath(file_path, directory_path)
                     zipf.write(file_path, arcname=arcname)
-        
-        logger.info("ディレクトリを圧縮しました: "+zip_filepath)
+
+        logger.info("ディレクトリを圧縮しました: " + zip_filepath)
 
         # 削除処理: 10日以上前のバックアップを削除
         delete_old_backups(directory_path, max_age_days=backup_max_age_days)
         return 0
     except Exception as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
         return 1
+
 
 @log_decorator(logger)
 def kill_palserver(process_name_to_check_list):
@@ -322,14 +331,14 @@ def kill_palserver(process_name_to_check_list):
         for process_name_to_check in process_name_to_check_list:
             try:
                 subprocess.run(["taskkill", "/IM", process_name_to_check, "/F"])
-                logger.info(process_name_to_check+" をタスクキルしました。")
-            except:pass
+                logger.info(process_name_to_check + " をタスクキルしました。")
+            except:
+                pass
         return 0
-    except subprocess.CalledProcessError as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
+    except Exception as e:
         logger.exception(e)
         return 1
+
 
 @log_decorator(logger)
 def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
@@ -337,10 +346,16 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
     def get_buildid_local(timeout_sec=10):
         try:
             result_locale = subprocess.run(
-                [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_status 2394010", "+quit"],
+                [
+                    steamcmd_exe_path,
+                    "+force_install_dir " + repo_directory,
+                    "+login anonymous",
+                    "+app_status 2394010",
+                    "+quit",
+                ],
                 stdout=subprocess.PIPE,
-                encoding='utf-8',
-                timeout=60
+                encoding="utf-8",
+                timeout=60,
             )
             pattern = r"BuildID (\d+)"
             for _ in range(timeout_sec):
@@ -348,19 +363,26 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
                 match = re.search(pattern, result_locale.stdout)
                 if match:
                     build_id_locale = match.group(1)
-                    logger.debug("Locale BuildID:"+str(build_id_locale))
+                    logger.debug("Locale BuildID:" + str(build_id_locale))
                     return 1, build_id_locale
-        except:pass
+        except Exception as e:
+            pass
         return 0, ""
 
     @log_decorator(logger)
     def get_buildid_remote(timeout_sec=10):
         try:
             result_remote = subprocess.run(
-                [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_info_print 2394010", "+quit"],
+                [
+                    steamcmd_exe_path,
+                    "+force_install_dir " + repo_directory,
+                    "+login anonymous",
+                    "+app_info_print 2394010",
+                    "+quit",
+                ],
                 stdout=subprocess.PIPE,
-                encoding='utf-8',
-                timeout=60
+                encoding="utf-8",
+                timeout=60,
             )
             pattern = r'"public"\s*{\s*"buildid"\s+"(\d+)"'
             for _ in range(timeout_sec):
@@ -368,9 +390,10 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
                 match = re.search(pattern, result_remote.stdout)
                 if match:
                     build_id_remote = match.group(1)
-                    logger.debug("Remote BuildID:"+str(build_id_remote))
+                    logger.debug("Remote BuildID:" + str(build_id_remote))
                     return 1, build_id_remote
-        except:pass
+        except Exception as e:
+            pass
         return 0, ""
 
     for _ in range(retry_num):
@@ -388,24 +411,47 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
     if flag_found_local:
         if flag_found_remote:
             if build_id_locale == build_id_remote:
-                logger.info("build_idが一致:"+str(build_id_locale)+" "+str(build_id_remote))
+                logger.info(
+                    "build_idが一致:"
+                    + str(build_id_locale)
+                    + " "
+                    + str(build_id_remote)
+                )
                 return 0
             else:
-                logger.info("build_idが不一致:"+str(build_id_locale)+" "+str(build_id_remote))
+                logger.info(
+                    "build_idが不一致:"
+                    + str(build_id_locale)
+                    + " "
+                    + str(build_id_remote)
+                )
                 return 1
         else:
-            logger.warning("localは取得できたが、remoteは取得できず:"+str(build_id_locale))
+            logger.warning(
+                "localは取得できたが、remoteは取得できず:" + str(build_id_locale)
+            )
             return 0
     else:
         if flag_found_remote:
-            logger.warning("localは取得できず、remoteは取得できた:"+str(build_id_remote))
+            logger.warning(
+                "localは取得できず、remoteは取得できた:" + str(build_id_remote)
+            )
             return 0
         else:
             logger.error("local、remote両方取得できず")
             return 0
 
+
 @log_decorator(logger)
-def worldsave_safe(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60):
+def worldsave_safe(
+    host,
+    port,
+    password,
+    process_name_to_check_list,
+    process_path_to_start,
+    flag_shutdown=False,
+    time_shutdown_sec=60,
+):
     logger.info("サーバーをダウンさせて、ワールドのコピーを取得し、コミットします。")
     global update_in_progress
     update_in_progress = True
@@ -413,77 +459,89 @@ def worldsave_safe(host, port, password, process_name_to_check_list, process_pat
 
     try:
         if is_process_running(process_name_to_check_list):
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                command="Info"
-                logger.info("Command sent: "+command)
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                command = "Info"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
             time.sleep(1)
 
-            #ShowPlayersはバグって続きが取得できないのでコメントアウト
+            # ShowPlayersはバグって続きが取得できないのでコメントアウト
             # with mcrcon.MCRcon(host, password, port) as client:
             #     command="ShowPlayers"
             #     logger.info("Command sent: "+command)
             #     response = client.command(command)
             #     logger.info("Server response: "+response)
             # time.sleep(1)
-            
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                command="Save"
-                logger.info("Command sent: "+command)
+
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                command = "Save"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
             time.sleep(1)
-            
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
                 if flag_shutdown:
                     # command="Shutdown 60 "
                     # command="Broadcast Shutdown has been scheduled for 60 seconds later."
-                    command="Broadcast Shutdown_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
-                    #メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
+                    command = (
+                        "Broadcast Shutdown_has_been_scheduled_for_"
+                        + str(time_shutdown_sec)
+                        + "_seconds_later."
+                    )
+                    # メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
                 else:
                     # command="Shutdown 60 "
-                    command="Broadcast Reboot_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
-                    #ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
-                logger.info("Command sent: "+command)
+                    command = (
+                        "Broadcast Reboot_has_been_scheduled_for_"
+                        + str(time_shutdown_sec)
+                        + "_seconds_later."
+                    )
+                    # ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
 
-            if time_shutdown_sec<1:
+            if time_shutdown_sec < 1:
                 time.sleep(1)
             else:
                 time.sleep(time_shutdown_sec)
 
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                command="Save"
-                logger.info("Command sent: "+command)
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                command = "Save"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
             time.sleep(1)
-            
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
                 if flag_shutdown:
                     # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
-                    command="Shutdown 10 "
+                    command = "Shutdown 10 "
                 else:
                     # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
-                    command="Shutdown 10 "
-                logger.info("Command sent: "+command)
+                    command = "Shutdown 10 "
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
 
             for i in range(60):
-                if not is_process_running(process_name_to_check_list):break
+                if not is_process_running(process_name_to_check_list):
+                    break
                 time.sleep(1)
             else:
-                #終了しないので、強制的に落とす
+                # 終了しないので、強制的に落とす
                 kill_palserver(process_name_to_check_list)
                 for i in range(60):
-                    if not is_process_running(process_name_to_check_list):break
+                    if not is_process_running(process_name_to_check_list):
+                        break
                     time.sleep(1)
                 else:
-                    #タスクキルでも落ちない場合
-                    logger.info("タスクキルしても落とせなかったのでコミット等を行いません")
+                    # タスクキルでも落ちない場合
+                    logger.info(
+                        "タスクキルしても落とせなかったのでコミット等を行いません"
+                    )
                     return 1
         zip_directory(zip_dir)
         git_commit(repo_directory)
@@ -493,67 +551,73 @@ def worldsave_safe(host, port, password, process_name_to_check_list, process_pat
             start_process(process_path_to_start)
             return 0
     except Exception as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
         return 1
     finally:
         update_in_progress = False
+
 
 @log_decorator(logger)
 def worldsave_nodown(host, port, password):
     logger.info("サーバーをダウンさせずにワールドのコピーを取得します。")
     if not update_in_progress:
         try:
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                command="Info"
-                logger.info("Command sent: "+command)
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                command = "Info"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
             time.sleep(1)
-            
-            #ShowPlayersはバグって続きが取得できないのでコメントアウト
+
+            # ShowPlayersはバグって続きが取得できないのでコメントアウト
             # with mcrcon.MCRcon(host, password, port) as client:
             #     command="ShowPlayers"
             #     logger.info("Command sent: "+command)
             #     response = client.command(command)
             #     logger.info("Server response: "+response)
             # time.sleep(1)
-            
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                command="Save"
-                logger.info("Command sent: "+command)
+
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                command = "Save"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
             time.sleep(2)
 
             zip_directory(zip_dir)
             return 0
-        except mcrcon.MCRconException as e:
-            logger.info("エラー")
-            errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
+        except Exception as e:
             logger.exception(e)
             return 1
 
+
 @log_decorator(logger)
-def worldsave_hour(host, port, password, process_name_to_check_list, process_path_to_start):
+def worldsave_hour(
+    host, port, password, process_name_to_check_list, process_path_to_start
+):
     try:
         current_hour = datetime.now().hour
         if current_hour % 6 != 0:  # 0時、6時、12時、18時の場合はスキップ
             worldsave_nodown(host, port, password)
         else:
-            worldsave_safe(host, port, password, process_name_to_check_list, process_path_to_start)
-    except:pass
+            worldsave_safe(
+                host, port, password, process_name_to_check_list, process_path_to_start
+            )
+    except Exception as e:
+        pass
+
 
 @log_decorator(logger)
 def worldsave_half_hour(host, port, password):
     try:
         worldsave_nodown(host, port, password)
-    except:pass
+    except Exception as e:
+        pass
+
 
 # アップデート処理
 @log_decorator(logger)
-def worldupdate(steamcmd_dir_path, repo_directory,flag_manual=False):
+def worldupdate(steamcmd_dir_path, repo_directory, flag_manual=False):
     try:
         # カレントディレクトリを保存
         current_directory = os.getcwd()
@@ -563,33 +627,45 @@ def worldupdate(steamcmd_dir_path, repo_directory,flag_manual=False):
         # SteamCMDコマンドを実行し、標準出力と標準エラー出力を取得
         if flag_manual:
             result = subprocess.run(
-                [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_update 2394010 validate", "+quit"],
-                encoding='utf-8'
+                [
+                    steamcmd_exe_path,
+                    "+force_install_dir " + repo_directory,
+                    "+login anonymous",
+                    "+app_update 2394010 validate",
+                    "+quit",
+                ],
+                encoding="utf-8",
             )
         else:
             result = subprocess.run(
-                [steamcmd_exe_path, "+force_install_dir " + repo_directory, "+login anonymous", "+app_update 2394010 validate", "+quit"],
+                [
+                    steamcmd_exe_path,
+                    "+force_install_dir " + repo_directory,
+                    "+login anonymous",
+                    "+app_update 2394010 validate",
+                    "+quit",
+                ],
                 capture_output=True,
                 text=True,
-                encoding='utf-8'
+                encoding="utf-8",
             )
 
             # 標準出力と標準エラー出力をログに記録
             if result.stdout is not None:
                 logger.debug(result.stdout)
             if result.stderr is not None:
-                if len(result.stderr)>0:
+                if len(result.stderr) > 0:
                     logger.error(result.stderr)
 
         # エラーチェック
         if result.returncode != 0:
-            raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+            raise subprocess.CalledProcessError(
+                result.returncode, result.args, result.stdout, result.stderr
+            )
 
         logger.info("アップデートが完了しました。")
         return 0
-    except subprocess.CalledProcessError as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
+    except Exception as e:
         logger.exception(e)
         return 1
     finally:
@@ -597,8 +673,7 @@ def worldupdate(steamcmd_dir_path, repo_directory,flag_manual=False):
         os.chdir(current_directory)
 
 
-
-#ライブラリでのアップデート(未使用)
+# ライブラリでのアップデート(未使用)
 @log_decorator(logger)
 def worldupdate2(steamcmd_dir_path, repo_directory):
     try:
@@ -608,51 +683,52 @@ def worldupdate2(steamcmd_dir_path, repo_directory):
         os.chdir(steamcmd_dir_path)
 
         s = SteamCMD(steamcmd_dir_path)
-        s.app_update(2394010,os.path.join(os.getcwd(),repo_directory),validate=True)
+        s.app_update(2394010, os.path.join(os.getcwd(), repo_directory), validate=True)
 
         logger.info("アップデートが完了しました。")
         return 0
     except Exception as e:
-        logger.info("エラー")
-        errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
         logger.exception(e)
         return 1
     finally:
         # 元の作業ディレクトリに戻る
         os.chdir(current_directory)
 
+
 @log_decorator(logger)
 def joinstatuscsv_read():
-    #ShowPlayersはバグって続きが取得できないのでコメントアウト
+    # ShowPlayersはバグって続きが取得できないのでコメントアウト
     # name,playeruid,steamid
     # aa,bb,cc
     # dd,ee,ff
-    #[{'name': 'aa', 'playeruid': 'bb', 'steamid': 'cc'}, {'name': 'dd', 'playeruid': 'ee', 'steamid': 'ff'}]
+    # [{'name': 'aa', 'playeruid': 'bb', 'steamid': 'cc'}, {'name': 'dd', 'playeruid': 'ee', 'steamid': 'ff'}]
     data = []
-    with codecs.open(joinstatuscsv_path, 'r', encoding='shiftjis') as file:
+    with codecs.open(joinstatuscsv_path, "r", encoding="shiftjis") as file:
         reader = csv.DictReader(file)
-        
+
         for row in reader:
             data.append(row)
 
     return data
 
+
 @log_decorator(logger)
-def joinstatuscsv_write(data, header=['name', 'playeruid', 'steamid']):
-    #ShowPlayersはバグって続きが取得できないのでコメントアウト
+def joinstatuscsv_write(data, header=["name", "playeruid", "steamid"]):
+    # ShowPlayersはバグって続きが取得できないのでコメントアウト
     # data_to_write = [
     #     {'name': 'aa', 'playeruid': 'bb', 'steamid': 'cc'},
     #     {'name': 'dd', 'playeruid': 'ee', 'steamid': 'ff'}
     # ]
-    with codecs.open(joinstatuscsv_path, 'w', encoding='shiftjis') as file:
+    with codecs.open(joinstatuscsv_path, "w", encoding="shiftjis") as file:
         writer = csv.DictWriter(file, fieldnames=header)
-        
+
         # ヘッダーを書き込む
         writer.writeheader()
 
         # データを書き込む
         for row in data:
             writer.writerow(row)
+
 
 # @log_decorator(logger)
 # def joinstatus_check(txt):
@@ -672,10 +748,11 @@ def joinstatuscsv_write(data, header=['name', 'playeruid', 'steamid']):
 #     default_detail_dic=dict(zip(df["key"], df["detail"]))
 #     return default_ini_dic, default_detail_dic
 
+
 @log_decorator(logger)
 def joinstatus_display(host, password, port):
     """入退出状況を表示する"""
-    #ShowPlayersはバグって続きが取得できないのでコメントアウト
+    # ShowPlayersはバグって続きが取得できないのでコメントアウト
     # try:
     #     with mcrcon.MCRcon(host, password, port) as client:
     #         command="ShowPlayers"
@@ -689,146 +766,169 @@ def joinstatus_display(host, password, port):
     #         response = client.command(command)
     #         logger.info("Server response: "+response)
 
+
 @log_decorator(logger)
-def worldsave(host, port, password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60,flag_reboot=True):
+def worldsave(
+    host,
+    port,
+    password,
+    process_name_to_check_list,
+    process_path_to_start,
+    flag_shutdown=False,
+    time_shutdown_sec=60,
+    flag_reboot=True,
+):
     """6時は再起動するが、他はアップデートがある場合のみ再起動する"""
     global update_in_progress
     current_hour = datetime.now().hour
 
-    if (current_hour==6 and flag_reboot) or isNeedUpdate():
-        #6時かつrebootフラグon、もしくはアップデートありのため、アップデートして再起動
-        if current_hour==6:logger.info("6時のため、サーバーアップデートを実施")
-        else:logger.info("アップデートありのため、サーバーアップデートを実施")
+    if (current_hour == 6 and flag_reboot) or isNeedUpdate():
+        # 6時かつrebootフラグon、もしくはアップデートありのため、アップデートして再起動
+        if current_hour == 6:
+            logger.info("6時のため、サーバーアップデートを実施")
+        else:
+            logger.info("アップデートありのため、サーバーアップデートを実施")
         update_in_progress = True
         try:
             if is_process_running(process_name_to_check_list):
-                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                    command="Info"
-                    logger.info("Command sent: "+command)
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Info"
+                    logger.info("Command sent: " + command)
                     response = client.command(command)
-                    logger.info("Server response: "+response)
+                    logger.info("Server response: " + response)
                 time.sleep(1)
 
-                #ShowPlayersはバグって続きが取得できないのでコメントアウト
+                # ShowPlayersはバグって続きが取得できないのでコメントアウト
                 # with mcrcon.MCRcon(host, password, port) as client:
                 #     command="ShowPlayers"
                 #     logger.info("Command sent: "+command)
                 #     response = client.command(command)
                 #     logger.info("Server response: "+response)
                 # time.sleep(1)
-                
-                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                    command="Save"
-                    logger.info("Command sent: "+command)
-                    response = client.command(command)
-                    logger.info("Server response: "+response)
-                time.sleep(1)
-                
-                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                    if flag_shutdown:
-                        command="Broadcast Shutdown_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
-                        #メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
-                    else:
-                        command="Broadcast Reboot_has_been_scheduled_for_"+str(time_shutdown_sec)+"_seconds_later."
-                        #ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
-                    logger.info("Command sent: "+command)
-                    response = client.command(command)
-                    logger.info("Server response: "+response)
 
-                if time_shutdown_sec<1:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Save"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+                time.sleep(1)
+
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    if flag_shutdown:
+                        command = (
+                            "Broadcast Shutdown_has_been_scheduled_for_"
+                            + str(time_shutdown_sec)
+                            + "_seconds_later."
+                        )
+                        # メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
+                    else:
+                        command = (
+                            "Broadcast Reboot_has_been_scheduled_for_"
+                            + str(time_shutdown_sec)
+                            + "_seconds_later."
+                        )
+                        # ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+
+                if time_shutdown_sec < 1:
                     time.sleep(1)
                 else:
                     time.sleep(time_shutdown_sec)
 
-                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                    command="Save"
-                    logger.info("Command sent: "+command)
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Save"
+                    logger.info("Command sent: " + command)
                     response = client.command(command)
-                    logger.info("Server response: "+response)
+                    logger.info("Server response: " + response)
                 time.sleep(1)
-                
-                with mcrcon.MCRcon(host, password, port,timeout=60) as client:
+
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
                     if flag_shutdown:
                         # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
-                        command="Shutdown 10 "
+                        command = "Shutdown 10 "
                     else:
                         # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
-                        command="Shutdown 10 "
-                    logger.info("Command sent: "+command)
+                        command = "Shutdown 10 "
+                    logger.info("Command sent: " + command)
                     response = client.command(command)
-                    logger.info("Server response: "+response)
+                    logger.info("Server response: " + response)
 
                 for i in range(60):
-                    if not is_process_running(process_name_to_check_list):break
+                    if not is_process_running(process_name_to_check_list):
+                        break
                     time.sleep(1)
                 else:
-                    #終了しないので、強制的に落とす
+                    # 終了しないので、強制的に落とす
                     kill_palserver(process_name_to_check_list)
                     for i in range(60):
-                        if not is_process_running(process_name_to_check_list):break
+                        if not is_process_running(process_name_to_check_list):
+                            break
                         time.sleep(1)
                     else:
-                        #タスクキルでも落ちない場合
-                        logger.info("タスクキルしても落とせなかったのでコミット等を行いません")
+                        # タスクキルでも落ちない場合
+                        logger.info(
+                            "タスクキルしても落とせなかったのでコミット等を行いません"
+                        )
                         return 1
             zip_directory(zip_dir)
             git_commit(repo_directory)
             worldupdate(steamcmd_dir_path, repo_directory)
-            git_commit(repo_directory,"updated")
+            git_commit(repo_directory, "updated")
             start_process(process_path_to_start)
             return 0
         except Exception as e:
-            logger.info("エラー")
-            errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
             logger.exception(e)
             return 1
         finally:
             update_in_progress = False
     else:
-        #アップデートなしか、取得できないため、再起動しない
+        # アップデートなしか、取得できないため、再起動しない
         logger.info("サーバーをダウンさせずにワールドのコピーを取得します。")
         try:
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                command="Info"
-                logger.info("Command sent: "+command)
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                command = "Info"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
             time.sleep(1)
-            
-            #ShowPlayersはバグって続きが取得できないのでコメントアウト
+
+            # ShowPlayersはバグって続きが取得できないのでコメントアウト
             # with mcrcon.MCRcon(host, password, port) as client:
             #     command="ShowPlayers"
             #     logger.info("Command sent: "+command)
             #     response = client.command(command)
             #     logger.info("Server response: "+response)
             # time.sleep(1)
-            
-            with mcrcon.MCRcon(host, password, port,timeout=60) as client:
-                command="Save"
-                logger.info("Command sent: "+command)
+
+            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                command = "Save"
+                logger.info("Command sent: " + command)
                 response = client.command(command)
-                logger.info("Server response: "+response)
+                logger.info("Server response: " + response)
             time.sleep(2)
 
             zip_directory(zip_dir)
             return 0
-        except mcrcon.MCRconException as e:
-            logger.info("エラー")
-            errortxt = ", ".join(list(traceback.TracebackException.from_exception(e).format()))
+        except Exception as e:
             logger.exception(e)
             return 1
+
 
 @log_decorator(logger)
 def main():
     logger.info(print_txt)
     logger.info("キーボードで 'q' が押されたら終了")
 
-    #初回起動チェック
-    processcheck(process_name_to_check_list, process_path_to_start,True)
+    # 初回起動チェック
+    processcheck(process_name_to_check_list, process_path_to_start, True)
 
     # 1分ごとに実行
-    schedule.every().minute.at(":30").do(lambda: processcheck(process_name_to_check_list, process_path_to_start))
-    
+    schedule.every().minute.at(":30").do(
+        lambda: processcheck(process_name_to_check_list, process_path_to_start)
+    )
+
     # 30分ごとに実行
     # アップデートがあるならアップデートして再起動
     # 6時は強制アップデート
@@ -838,18 +938,38 @@ def main():
     # schedule.every().hour.at(":30").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":40").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
     # schedule.every().hour.at(":50").do(lambda: worldsave_half_hour(server_host, server_port, rcon_password))
-    schedule.every().hour.at(":00").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60,flag_reboot=flag_reboot))
-    schedule.every().hour.at(":30").do(lambda: worldsave(server_host, server_port, rcon_password, process_name_to_check_list, process_path_to_start,flag_shutdown=False,time_shutdown_sec=60,flag_reboot=flag_reboot))
-    
+    schedule.every().hour.at(":00").do(
+        lambda: worldsave(
+            server_host,
+            server_port,
+            rcon_password,
+            process_name_to_check_list,
+            process_path_to_start,
+            flag_shutdown=False,
+            time_shutdown_sec=60,
+            flag_reboot=flag_reboot,
+        )
+    )
+    schedule.every().hour.at(":30").do(
+        lambda: worldsave(
+            server_host,
+            server_port,
+            rcon_password,
+            process_name_to_check_list,
+            process_path_to_start,
+            flag_shutdown=False,
+            time_shutdown_sec=60,
+            flag_reboot=flag_reboot,
+        )
+    )
 
     while True:
         schedule.run_pending()
-        if keyboard.is_pressed('q'):
+        if keyboard.is_pressed("q"):
             logger.info("終了します。")
             break
         time.sleep(1)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
