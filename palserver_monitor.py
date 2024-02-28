@@ -6,16 +6,14 @@ print_txt = """
 6時間ごとにワールドをシャットダウンしてアップデートがあったらアップデートして、zip化してコピーしてgit commitする(プロセス監視はこの間停止)
 毎日6時に強制的にサーバーアップデートする(プロセス監視はこの間停止)
 """
+import ssl
+import certifi
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 from com import log_decorator
 from configmanager import ConfigManager
 import logging
-import ssl
-import certifi
-
-# from slackapi import textpost, imagepost, imagepost_from_url
-
 logger = logging.getLogger(__name__)
-ssl_context = ssl.create_default_context(cafile=certifi.where())
+# from slackapi import textpost, imagepost, imagepost_from_url
 import psutil
 import mcrcon
 import time
@@ -459,72 +457,90 @@ def worldsave_safe(
 
     try:
         if is_process_running(process_name_to_check_list):
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                command = "Info"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Info"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
             time.sleep(1)
 
             # ShowPlayersはバグって続きが取得できないのでコメントアウト
-            # with mcrcon.MCRcon(host, password, port) as client:
-            #     command="ShowPlayers"
-            #     logger.info("Command sent: "+command)
-            #     response = client.command(command)
-            #     logger.info("Server response: "+response)
+            # try:
+                # with mcrcon.MCRcon(host, password, port) as client:
+                #     command="ShowPlayers"
+                #     logger.info("Command sent: "+command)
+                #     response = client.command(command)
+                #     logger.info("Server response: "+response)
+            # except Exception as e:
+            #     logger.exception(e)
             # time.sleep(1)
 
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                command = "Save"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Save"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
             time.sleep(1)
 
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                if flag_shutdown:
-                    # command="Shutdown 60 "
-                    # command="Broadcast Shutdown has been scheduled for 60 seconds later."
-                    command = (
-                        "Broadcast Shutdown_has_been_scheduled_for_"
-                        + str(time_shutdown_sec)
-                        + "_seconds_later."
-                    )
-                    # メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
-                else:
-                    # command="Shutdown 60 "
-                    command = (
-                        "Broadcast Reboot_has_been_scheduled_for_"
-                        + str(time_shutdown_sec)
-                        + "_seconds_later."
-                    )
-                    # ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    if flag_shutdown:
+                        # command="Shutdown 60 "
+                        # command="Broadcast Shutdown has been scheduled for 60 seconds later."
+                        command = (
+                            "Broadcast Shutdown_has_been_scheduled_for_"
+                            + str(time_shutdown_sec)
+                            + "_seconds_later."
+                        )
+                        # メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
+                    else:
+                        # command="Shutdown 60 "
+                        command = (
+                            "Broadcast Reboot_has_been_scheduled_for_"
+                            + str(time_shutdown_sec)
+                            + "_seconds_later."
+                        )
+                        # ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
 
             if time_shutdown_sec < 1:
                 time.sleep(1)
             else:
                 time.sleep(time_shutdown_sec)
 
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                command = "Save"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Save"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
             time.sleep(1)
 
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                if flag_shutdown:
-                    # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
-                    command = "Shutdown 10 "
-                else:
-                    # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
-                    command = "Shutdown 10 "
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    if flag_shutdown:
+                        # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
+                        command = "Shutdown 10 "
+                    else:
+                        # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
+                        command = "Shutdown 10 "
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
 
             for i in range(60):
                 if not is_process_running(process_name_to_check_list):
@@ -562,26 +578,35 @@ def worldsave_nodown(host, port, password):
     logger.info("サーバーをダウンさせずにワールドのコピーを取得します。")
     if not update_in_progress:
         try:
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                command = "Info"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Info"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
             time.sleep(1)
 
             # ShowPlayersはバグって続きが取得できないのでコメントアウト
-            # with mcrcon.MCRcon(host, password, port) as client:
-            #     command="ShowPlayers"
-            #     logger.info("Command sent: "+command)
-            #     response = client.command(command)
-            #     logger.info("Server response: "+response)
+            # try:
+                # with mcrcon.MCRcon(host, password, port) as client:
+                #     command="ShowPlayers"
+                #     logger.info("Command sent: "+command)
+                #     response = client.command(command)
+                #     logger.info("Server response: "+response)
+            # except Exception as e:
+            #     logger.exception(e)
             # time.sleep(1)
 
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                command = "Save"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Save"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
             time.sleep(2)
 
             zip_directory(zip_dir)
@@ -791,69 +816,86 @@ def worldsave(
         update_in_progress = True
         try:
             if is_process_running(process_name_to_check_list):
-                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                    command = "Info"
-                    logger.info("Command sent: " + command)
-                    response = client.command(command)
-                    logger.info("Server response: " + response)
+                try:
+                    with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                        command = "Info"
+                        logger.info("Command sent: " + command)
+                        response = client.command(command)
+                        logger.info("Server response: " + response)
+                except Exception as e:
+                    logger.exception(e)
                 time.sleep(1)
 
                 # ShowPlayersはバグって続きが取得できないのでコメントアウト
-                # with mcrcon.MCRcon(host, password, port) as client:
-                #     command="ShowPlayers"
-                #     logger.info("Command sent: "+command)
-                #     response = client.command(command)
-                #     logger.info("Server response: "+response)
+                # try:
+                    # with mcrcon.MCRcon(host, password, port) as client:
+                    #     command="ShowPlayers"
+                    #     logger.info("Command sent: "+command)
+                    #     response = client.command(command)
+                    #     logger.info("Server response: "+response)
+                # except Exception as e:
+                #     logger.exception(e)
                 # time.sleep(1)
 
-                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                    command = "Save"
-                    logger.info("Command sent: " + command)
-                    response = client.command(command)
-                    logger.info("Server response: " + response)
+                try:
+                    with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                        command = "Save"
+                        logger.info("Command sent: " + command)
+                        response = client.command(command)
+                        logger.info("Server response: " + response)
+                except Exception as e:
+                    logger.exception(e)
                 time.sleep(1)
 
-                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                    if flag_shutdown:
-                        command = (
-                            "Broadcast Shutdown_has_been_scheduled_for_"
-                            + str(time_shutdown_sec)
-                            + "_seconds_later."
-                        )
-                        # メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
-                    else:
-                        command = (
-                            "Broadcast Reboot_has_been_scheduled_for_"
-                            + str(time_shutdown_sec)
-                            + "_seconds_later."
-                        )
-                        # ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
-                    logger.info("Command sent: " + command)
-                    response = client.command(command)
-                    logger.info("Server response: " + response)
-
+                try:
+                    with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                        if flag_shutdown:
+                            command = (
+                                "Broadcast Shutdown_has_been_scheduled_for_"
+                                + str(time_shutdown_sec)
+                                + "_seconds_later."
+                            )
+                            # メンテナンスのため、60秒後にシャットダウンします。ログアウトしてください。"
+                        else:
+                            command = (
+                                "Broadcast Reboot_has_been_scheduled_for_"
+                                + str(time_shutdown_sec)
+                                + "_seconds_later."
+                            )
+                            # ワールド保存のため、60秒後に再起動します。ログアウトしてください。"
+                        logger.info("Command sent: " + command)
+                        response = client.command(command)
+                        logger.info("Server response: " + response)
+                except Exception as e:
+                    logger.exception(e)
                 if time_shutdown_sec < 1:
                     time.sleep(1)
                 else:
                     time.sleep(time_shutdown_sec)
 
-                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                    command = "Save"
-                    logger.info("Command sent: " + command)
-                    response = client.command(command)
-                    logger.info("Server response: " + response)
+                try:
+                    with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                        command = "Save"
+                        logger.info("Command sent: " + command)
+                        response = client.command(command)
+                        logger.info("Server response: " + response)
+                except Exception as e:
+                    logger.exception(e)
                 time.sleep(1)
 
-                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                    if flag_shutdown:
-                        # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
-                        command = "Shutdown 10 "
-                    else:
-                        # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
-                        command = "Shutdown 10 "
-                    logger.info("Command sent: " + command)
-                    response = client.command(command)
-                    logger.info("Server response: " + response)
+                try:
+                    with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                        if flag_shutdown:
+                            # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
+                            command = "Shutdown 10 "
+                        else:
+                            # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
+                            command = "Shutdown 10 "
+                        logger.info("Command sent: " + command)
+                        response = client.command(command)
+                        logger.info("Server response: " + response)
+                except Exception as e:
+                    logger.exception(e)
 
                 for i in range(60):
                     if not is_process_running(process_name_to_check_list):
@@ -887,11 +929,14 @@ def worldsave(
         # アップデートなしか、取得できないため、再起動しない
         logger.info("サーバーをダウンさせずにワールドのコピーを取得します。")
         try:
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                command = "Info"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Info"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
             time.sleep(1)
 
             # ShowPlayersはバグって続きが取得できないのでコメントアウト
@@ -902,11 +947,14 @@ def worldsave(
             #     logger.info("Server response: "+response)
             # time.sleep(1)
 
-            with mcrcon.MCRcon(host, password, port, timeout=60) as client:
-                command = "Save"
-                logger.info("Command sent: " + command)
-                response = client.command(command)
-                logger.info("Server response: " + response)
+            try:
+                with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                    command = "Save"
+                    logger.info("Command sent: " + command)
+                    response = client.command(command)
+                    logger.info("Server response: " + response)
+            except Exception as e:
+                logger.exception(e)
             time.sleep(2)
 
             zip_directory(zip_dir)
