@@ -13,10 +13,15 @@ from logging.handlers import RotatingFileHandler
 flag_datelog = False
 
 # ストリームハンドラの設定
-rich_handler: RichHandler = RichHandler(rich_tracebacks=True)
+rich_handler = RichHandler(rich_tracebacks=True)
 rich_handler.setLevel(INFO)
 # rich_handler.setLevel(DEBUG)
-rich_handler.setFormatter(Formatter("%(message)s"))
+
+# 日付の表示フォーマットを変更する
+date_format = "%Y/%m/%d %H:%M:%S"
+rich_handler.setFormatter(Formatter("%(asctime)s - %(message)s", datefmt=date_format))
+
+
 
 # 保存先の有無チェック
 if not os.path.isdir("./Log"):
