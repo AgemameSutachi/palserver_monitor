@@ -6,11 +6,6 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-default_config_dic = {
-    "key1": "val1",
-    "key2": "val2",
-}
-
 
 class ConfigManager:
     """設定ファイルを管理するクラス"""
@@ -18,7 +13,7 @@ class ConfigManager:
     @log_decorator(logger)
     def __init__(
         self,
-        default_dic: dict = default_config_dic,
+        default_dic: dict,
         config_path: str = os.path.basename(os.getcwd()) + ".ini",
         encoding: str = "cp932",
     ):

@@ -271,7 +271,7 @@ def delete_old_backups(directory_path, max_age_days):
         files = [
             f
             for f in os.listdir(directory_path)
-            if os.path.isfile(os.path.join(directory_path, f))
+            if os.path.isfile(os.path.join(directory_path, f)) and f.endswith('.zip')
         ]
 
         for file in files:
@@ -287,7 +287,7 @@ def delete_old_backups(directory_path, max_age_days):
 
         return 0
     except Exception as e:
-        logger.exception(e)
+        logger.exception("ファイルの削除中にエラーが発生しました。")
         return 1
 
 
@@ -315,7 +315,7 @@ def zip_directory(directory_path):
         logger.info("ディレクトリを圧縮しました: " + zip_filepath)
 
         # 削除処理: 10日以上前のバックアップを削除
-        delete_old_backups(directory_path, max_age_days=backup_max_age_days)
+        delete_old_backups(os.path.dirname(directory_path), max_age_days=backup_max_age_days)
         return 0
     except Exception as e:
         logger.exception(e)

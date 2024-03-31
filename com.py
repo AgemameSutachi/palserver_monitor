@@ -1,12 +1,17 @@
 import os
 import logging
-import os
 from datetime import datetime
-import logging
 from logging import Formatter
-from logging import INFO, DEBUG, NOTSET
+from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL, NOTSET
 from rich.logging import RichHandler
 from logging.handlers import RotatingFileHandler
+
+# 不要なロガーをレベル設定
+logging.getLogger("werkzeug").setLevel(ERROR)
+logging.getLogger("httpcore.http11").setLevel(ERROR)
+logging.getLogger("urllib3.connectionpool").setLevel(ERROR)
+logging.getLogger("googleapiclient.discovery_cache").setLevel(ERROR)
+logging.getLogger("googleapiclient.discovery").setLevel(ERROR)
 
 # Trueで日付、Falseでdebugとinfoのログファイル名
 # 起動しっぱなしはFalseにする
@@ -22,7 +27,6 @@ date_format = "%Y/%m/%d %H:%M:%S"
 rich_handler.setFormatter(Formatter("%(asctime)s - %(message)s", datefmt=date_format))
 
 
-
 # 保存先の有無チェック
 if not os.path.isdir("./Log"):
     os.makedirs("./Log", exist_ok=True)
@@ -30,13 +34,16 @@ if not os.path.isdir("./Log"):
 # ファイルハンドラの設定
 if flag_datelog:
     file_handler = RotatingFileHandler(
-        f"./Log/{datetime.now():%Y-%m-%d}.log", "a", maxBytes=1000000, backupCount=10
+        f"./Log/{datetime.now():%Y-%m-%d}.log",
+        "a",
+        maxBytes=10 * 1024 * 1024,
+        backupCount=10,
     )
     file_handler.setLevel(DEBUG)
     file_handler.setFormatter(
         # Formatter("%(asctime)s [%(levelname).4s] %(filename)s %(funcName)s %(lineno)d: %(message)s")
         Formatter(
-            "%(asctime)s [%(levelname)s] %(filename)s %(funcName)s %(lineno)d: %(message)s"
+            "%(asctime)s [%(levelname)s] %(name)s %(filename)s %(funcName)s %(lineno)d: %(message)s"
         )
     )
 
@@ -44,23 +51,23 @@ if flag_datelog:
     logging.basicConfig(level=NOTSET, handlers=[rich_handler, file_handler])
 else:
     file_handler_debug = RotatingFileHandler(
-        f"./Log/debug.log", "a", maxBytes=1000000, backupCount=10
+        f"./Log/debug.log", "a", maxBytes=10 * 1024 * 1024, backupCount=10
     )
     file_handler_debug.setLevel(DEBUG)
     file_handler_debug.setFormatter(
         # Formatter("%(asctime)s [%(levelname).4s] %(filename)s %(funcName)s %(lineno)d: %(message)s")
         Formatter(
-            "%(asctime)s [%(levelname)s] %(filename)s %(funcName)s %(lineno)d: %(message)s"
+            "%(asctime)s [%(levelname)s] %(name)s %(filename)s %(funcName)s %(lineno)d: %(message)s"
         )
     )
     file_handler_info = RotatingFileHandler(
-        f"./Log/info.log", "a", maxBytes=1000000, backupCount=10
+        f"./Log/info.log", "a", maxBytes=10 * 1024 * 1024, backupCount=10
     )
     file_handler_info.setLevel(INFO)
     file_handler_info.setFormatter(
         # Formatter("%(asctime)s [%(levelname).4s] %(filename)s %(funcName)s %(lineno)d: %(message)s")
         Formatter(
-            "%(asctime)s [%(levelname)s] %(filename)s %(funcName)s %(lineno)d: %(message)s"
+            "%(asctime)s [%(levelname)s] %(name)s %(filename)s %(funcName)s %(lineno)d: %(message)s"
         )
     )
     # ルートロガーの設定
@@ -80,7 +87,7 @@ def log_decorator(logger):
                 logger.debug(f"  end: {func.__name__}")
                 return return_val
             except Exception as e:
-                logger.error(f"error: {func.__name__}")
+                logger.exception(f"error: {func.__name__}")
                 raise e
 
         return wrapper
