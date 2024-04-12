@@ -44,6 +44,7 @@ pywin32==306
 pywin32-ctypes==0.2.2
 pyzmq==25.1.2
 requests==2.31.0
+chardet
 rich==13.7.0
 schedule==1.2.1
 six==1.16.0
