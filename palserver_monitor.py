@@ -346,7 +346,7 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
             result_locale = subprocess.run(
                 [
                     steamcmd_exe_path,
-                    "+force_install_dir " + repo_directory,
+                    "+force_install_dir " + steamcmd_dir_path,
                     "+login anonymous",
                     "+app_status 2394010",
                     "+quit",
@@ -373,7 +373,7 @@ def isNeedUpdate(interval_sec=10, retry_num=10, retry_interval_sec=10):
             result_remote = subprocess.run(
                 [
                     steamcmd_exe_path,
-                    "+force_install_dir " + repo_directory,
+                    "+force_install_dir " + steamcmd_dir_path,
                     "+login anonymous",
                     "+app_info_print 2394010",
                     "+quit",
@@ -515,8 +515,10 @@ def worldsave_safe(
 
             if time_shutdown_sec < 1:
                 time.sleep(1)
-            else:
+            elif time_shutdown_sec <=10:
                 time.sleep(time_shutdown_sec)
+            else:
+                time.sleep(time_shutdown_sec-10)
 
             try:
                 with mcrcon.MCRcon(host, password, port, timeout=60) as client:
@@ -532,10 +534,16 @@ def worldsave_safe(
                 with mcrcon.MCRcon(host, password, port, timeout=60) as client:
                     if flag_shutdown:
                         # command="Shutdown 10 メンテナンスのため、10秒後にシャットダウンします。ログアウトしてください。"
-                        command = "Shutdown 10 "
+                        if time_shutdown_sec <=10:
+                            command = "Shutdown"
+                        else:
+                            command = "Shutdown 10 "
                     else:
                         # command="Shutdown 10 ワールド保存のため、10秒後に再起動します。ログアウトしてください。"
-                        command = "Shutdown 10 "
+                        if time_shutdown_sec <=10:
+                            command = "Shutdown"
+                        else:
+                            command = "Shutdown 10 "
                     logger.info("Command sent: " + command)
                     response = client.command(command)
                     logger.info("Server response: " + response)
@@ -548,17 +556,31 @@ def worldsave_safe(
                 time.sleep(1)
             else:
                 # 終了しないので、強制的に落とす
-                kill_palserver(process_name_to_check_list)
+                try:
+                    with mcrcon.MCRcon(host, password, port, timeout=60) as client:
+                        command = "DoExit"
+                        logger.info("Command sent: " + command)
+                        response = client.command(command)
+                        logger.info("Server response: " + response)
+                except Exception as e:
+                    logger.exception(e)
                 for i in range(60):
                     if not is_process_running(process_name_to_check_list):
                         break
                     time.sleep(1)
                 else:
-                    # タスクキルでも落ちない場合
-                    logger.info(
-                        "タスクキルしても落とせなかったのでコミット等を行いません"
-                    )
-                    return 1
+                    # 終了しないので、タスクキルで落とす
+                    kill_palserver(process_name_to_check_list)
+                    for i in range(60):
+                        if not is_process_running(process_name_to_check_list):
+                            break
+                        time.sleep(1)
+                    else:
+                        # タスクキルでも落ちない場合
+                        logger.warning(
+                            "タスクキルしても落とせなかったのでコミット等を行いません"
+                        )
+                        return 1
         zip_directory(zip_dir)
         git_commit(repo_directory)
         if flag_shutdown:
